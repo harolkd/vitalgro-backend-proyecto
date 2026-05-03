@@ -1,89 +1,79 @@
-const {  obtenerProductos,  crearProducto,  actualizarProducto,  eliminarProducto} = require('../../controllers/productos.controller'); 
+import { jest } from '@jest/globals';
+import {
+  obtenerProductos,
+  crearProducto,
+  actualizarProducto,
+  eliminarProducto
+} from '../../controllers/productos.controller.js';
+import Producto from '../../models/Producto.js';
 
-const {describe, expect, test} = require('@jest/globals');
+describe('Productos Controller', () => {
+  let req, res;
 
-// tests/unit/producto.test.js
-jest.mock('../../models/Producto');
-const Producto = require('../../models/Producto');
-
-const mockResponse = () => {
-  const res = {};
-  res.status = jest.fn().mockReturnValue(res);
-  res.json = jest.fn().mockReturnValue(res);
-  return res;
-};
-
-describe('productoController', () => {
   beforeEach(() => {
+    req = {
+      body: {},
+      params: {}
+    };
+    res = {
+      json: jest.fn()
+    };
     jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
   describe('obtenerProductos', () => {
-    test('responde con la lista de productos desde Producto.find', async () => {
-      const productosMock = [{ nombre: 'A' }, { nombre: 'B' }];
-      Producto.find.mockResolvedValue(productosMock);
-
-      const req = {};
-      const res = mockResponse();
+    it('debería obtener todos los productos', async () => {
+      const mockProducts = [{ name: 'Producto 1' }, { name: 'Producto 2' }];
+      jest.spyOn(Producto, 'find').mockResolvedValue(mockProducts);
 
       await obtenerProductos(req, res);
 
       expect(Producto.find).toHaveBeenCalledTimes(1);
-      expect(res.json).toHaveBeenCalledWith(productosMock);
+      expect(res.json).toHaveBeenCalledWith(mockProducts);
     });
   });
 
   describe('crearProducto', () => {
-    test('crea y guarda un nuevo producto y responde con él', async () => {
-      const body = { nombre: 'Nuevo', precio: 10 };
-      // Simular constructor: new Producto(req.body) debe devolver instancia con save
-      const saveMock = jest.fn().mockResolvedValue();
-      // Producto mock como función constructora
-      Producto.mockImplementation(function (data) {
-        Object.assign(this, data);
-        this.save = saveMock;
-      });
-
-      const req = { body };
-      const res = mockResponse();
+    it('debería crear un nuevo producto', async () => {
+      req.body = { nombre: 'Nuevo Producto', precio: 100 };
+      const mockSavedProduct = { ...req.body, _id: '123' };
+      jest.spyOn(Producto.prototype, 'save').mockResolvedValue(mockSavedProduct);
 
       await crearProducto(req, res);
 
-      expect(Producto).toHaveBeenCalledWith(body); // constructor llamado
-      expect(saveMock).toHaveBeenCalledTimes(1);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining(body));
+      expect(Producto.prototype.save).toHaveBeenCalledTimes(1);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
+        nombre: 'Nuevo Producto',
+        precio: 100
+      }));
     });
   });
 
   describe('actualizarProducto', () => {
-    test('actualiza producto por id y responde con el actualizado', async () => {
-      const id = 'abc123';
-      const body = { nombre: 'Editado' };
-      const actualizadoMock = { id, ...body };
+    it('debería actualizar un producto existente', async () => {
+      req.params.id = '123';
+      req.body = { nombre: 'Producto Actualizado' };
+      const mockUpdatedProduct = { ...req.body, _id: '123' };
 
-      Producto.findByIdAndUpdate.mockResolvedValue(actualizadoMock);
-
-      const req = { params: { id }, body };
-      const res = mockResponse();
+      jest.spyOn(Producto, 'findByIdAndUpdate').mockResolvedValue(mockUpdatedProduct);
 
       await actualizarProducto(req, res);
 
-      expect(Producto.findByIdAndUpdate).toHaveBeenCalledWith(id, body, { new: true });
-      expect(res.json).toHaveBeenCalledWith(actualizadoMock);
+      expect(Producto.findByIdAndUpdate).toHaveBeenCalledWith('123', req.body, { new: true });
+      expect(res.json).toHaveBeenCalledWith(mockUpdatedProduct);
     });
   });
 
   describe('eliminarProducto', () => {
-    test('elimina producto por id y responde con mensaje', async () => {
-      const id = '0';
-      Producto.findByIdAndDelete.mockResolvedValue();
+    it('debería eliminar un producto', async () => {
+      req.params.id = '123';
 
-      const req = { params: { id } };
-      const res = mockResponse();
+      jest.spyOn(Producto, 'findByIdAndDelete').mockResolvedValue({});
 
       await eliminarProducto(req, res);
 
-      expect(Producto.findByIdAndDelete).toHaveBeenCalledWith(id);
+      expect(Producto.findByIdAndDelete).toHaveBeenCalledWith('123');
       expect(res.json).toHaveBeenCalledWith({ mensaje: 'Producto eliminado' });
     });
   });
